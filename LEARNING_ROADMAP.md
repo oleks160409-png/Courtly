@@ -2,7 +2,7 @@
 
 ## Current phase
 
-First backend release, following the reduced internship preparation scope. Core Java, object-oriented refactoring, multiple courts and dates, REST operations and PostgreSQL persistence are implemented. Container and CI verification are the final release checks.
+First backend release, following the reduced internship preparation scope. Core Java, object-oriented refactoring, multiple courts and dates, REST operations and PostgreSQL persistence are implemented. Docker startup, HTTP smoke checks and persistence after restart have been verified. The GitHub Actions pipeline builds and checks the project on Linux.
 
 ## Completed implementation tasks
 
@@ -15,10 +15,12 @@ First backend release, following the reduced internship preparation scope. Core 
 - PostgreSQL repositories, Flyway migration and database constraints.
 - Conflict protection for concurrent booking attempts.
 - Docker Compose and setup/API/architecture documentation.
+- Isolated unit tests and PostgreSQL integration tests: 22 checks passed locally on Java 21.
+- Successful GitHub Actions run for both Java tests and Docker HTTP checks.
 
 ## Current assignment
 
-Verify the first release locally and in GitHub Actions, then prepare an accurate CV project description. After that, review the implementation and explain each important class and method independently.
+Prepare an accurate CV project description. Review the implementation and explain each important class and method independently, while practising coding assessment problems in parallel.
 
 ## Concepts encountered
 
