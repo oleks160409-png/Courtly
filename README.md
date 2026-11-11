@@ -67,7 +67,13 @@ TEST_DB_URL=jdbc:postgresql://localhost:5433/courtly_test ./mvnw -B -ntp verify
 
 The default test credentials are `courtly` / `courtly`, configurable through `TEST_DB_USERNAME` and `TEST_DB_PASSWORD`. Without `TEST_DB_URL`, tests expect `courtly_test` on port 5432.
 
-The suite checks service rules, HTTP responses, validation, cancellation, adjacent intervals, different courts and dates, and concurrent conflicting requests. Database constraints are also tested through a direct SQL insertion that bypasses service validation.
+The suite includes isolated unit tests and PostgreSQL integration tests. It checks service rules, HTTP responses, validation, cancellation, adjacent intervals, different courts and dates, and concurrent conflicting requests. Database constraints are also tested through a direct SQL insertion that bypasses service validation.
+
+The isolated unit tests can also run without PostgreSQL.
+
+```bash
+./mvnw -Dtest=BookingServiceUnitTest test
+```
 
 For a running local API, an additional HTTP check is available using Python 3.9 or newer.
 
