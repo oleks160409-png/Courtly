@@ -1,6 +1,7 @@
 # Compiled Java files and build output
 *.class
 out/
+target/
 
 # IntelliJ IDEA local project configuration
 .idea/
