@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: courtly
+      POSTGRES_USER: courtly
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-courtly}
+    ports:
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+    volumes:
+      - courtly-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U courtly -d courtly"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build: ./Courtly
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/courtly
+      DB_USERNAME: courtly
+      DB_PASSWORD: ${DB_PASSWORD:-courtly}
+      SERVER_ADDRESS: 0.0.0.0
+    ports:
+      - "127.0.0.1:${PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres-test:
+    image: postgres:17-alpine
+    profiles: ["test"]
+    environment:
+      POSTGRES_DB: courtly_test
+      POSTGRES_USER: courtly
+      POSTGRES_PASSWORD: courtly
+    ports:
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U courtly -d courtly_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  courtly-data:

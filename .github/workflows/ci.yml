@@ -1,0 +1,54 @@
+name: Build and test
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: courtly_test
+          POSTGRES_USER: courtly
+          POSTGRES_PASSWORD: courtly
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U courtly -d courtly_test"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: Courtly/pom.xml
+      - name: Build and test against PostgreSQL
+        working-directory: Courtly
+        run: ./mvnw -B -ntp verify
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: Courtly/target/surefire-reports/
+
+  containers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start application and database
+        run: docker compose up --build -d --wait
+      - name: Check HTTP response
+        run: python3 scripts/smoke_api.py
+      - name: Container logs
+        if: failure()
+        run: docker compose logs
+      - name: Stop containers
+        if: always()
+        run: docker compose down

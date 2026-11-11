@@ -9,3 +9,4 @@ target/
 
 # macOS metadata
 .DS_Store
+.env
