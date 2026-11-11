@@ -1,3 +1,5 @@
+package com.courtly;
+
 public class Court {
     private final int id;
     private final String name;

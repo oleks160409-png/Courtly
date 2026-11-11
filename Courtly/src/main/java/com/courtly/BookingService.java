@@ -1,7 +1,11 @@
+package com.courtly;
+
+import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 
+@Service
 public class BookingService {
     public static final LocalTime OPENING_TIME = LocalTime.of(8, 0);
     public static final LocalTime CLOSING_TIME = LocalTime.of(22, 0);
