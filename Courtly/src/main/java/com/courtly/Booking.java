@@ -2,16 +2,28 @@ package com.courtly;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import jakarta.persistence.*;
 
+@Entity
+@Table(name = "bookings")
 public class Booking {
-    private final int id;
-    private final Court court;
-    private final LocalDate date;
-    private final LocalTime startTime;
-    private final LocalTime endTime;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private int id;
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "court_id", nullable = false)
+    private Court court;
+    @Column(name = "booking_date", nullable = false)
+    private LocalDate date;
+    @Column(name = "start_time", nullable = false)
+    private LocalTime startTime;
+    @Column(name = "end_time", nullable = false)
+    private LocalTime endTime;
 
-    public Booking(int id, Court court, LocalDate date, LocalTime startTime, LocalTime endTime) {
-        this.id = id;
+    protected Booking() {
+    }
+
+    public Booking(Court court, LocalDate date, LocalTime startTime, LocalTime endTime) {
         this.court = court;
         this.date = date;
         this.startTime = startTime;

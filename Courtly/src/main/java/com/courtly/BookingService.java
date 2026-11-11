@@ -1,117 +1,107 @@
 package com.courtly;
 
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.List;
 
 @Service
+@Transactional(readOnly = true)
 public class BookingService {
     public static final LocalTime OPENING_TIME = LocalTime.of(8, 0);
     public static final LocalTime CLOSING_TIME = LocalTime.of(22, 0);
     public static final int SLOT_MINUTES = 30;
 
-    private final ArrayList<Booking> bookings = new ArrayList<>();
-    private final ArrayList<Court> courts = new ArrayList<>();
-    private int nextBookingId = 1;
+    private final BookingRepository bookingRepository;
+    private final CourtRepository courtRepository;
 
-    public BookingService() {
-        courts.add(new Court(1, "Tennis Court"));
-        courts.add(new Court(2, "Basketball Court"));
+    public BookingService(BookingRepository bookingRepository, CourtRepository courtRepository) {
+        this.bookingRepository = bookingRepository;
+        this.courtRepository = courtRepository;
     }
 
     public ArrayList<Court> getCourts() {
-        return new ArrayList<>(courts);
+        return new ArrayList<>(courtRepository.findAll(Sort.by("id")));
     }
 
     public Court getCourtById(int courtId) {
-        for (Court court : courts) {
-            if (court.getId() == courtId) {
-                return court;
-            }
-        }
-        throw new ResourceNotFoundException("Court not found.");
+        return courtRepository.findById(courtId)
+                .orElseThrow(() -> new ResourceNotFoundException("Court not found."));
     }
 
-    public synchronized Booking createBooking(int courtId, LocalDate date, LocalTime startTime, LocalTime endTime) {
+    @Transactional
+    public Booking createBooking(int courtId, LocalDate date, LocalTime startTime, LocalTime endTime) {
         Court court = getCourtById(courtId);
-        if (date == null) {
-            throw new IllegalArgumentException("Date is required.");
-        }
+        requireDate(date);
         validateTime(startTime);
         validateTime(endTime);
         if (!startTime.isBefore(endTime)) {
             throw new IllegalArgumentException("Start time must be before end time.");
         }
+        if (bookingRepository.overlaps(courtId, date, startTime, endTime)) {
+            throw new BookingConflictException();
+        }
 
-        for (Booking booking : bookings) {
-            if (booking.getCourt().getId() == courtId
-                    && booking.getDate().equals(date)
-                    && startTime.isBefore(booking.getEndTime())
-                    && endTime.isAfter(booking.getStartTime())) {
-                throw new BookingConflictException();
+        try {
+            return bookingRepository.saveAndFlush(new Booking(court, date, startTime, endTime));
+        } catch (DataIntegrityViolationException exception) {
+            // Concurrent requests can pass the initial check; the database rejects the overlap.
+            Throwable cause = exception;
+            while (cause != null) {
+                if (cause instanceof SQLException sql && "23P01".equals(sql.getSQLState())) {
+                    throw new BookingConflictException();
+                }
+                cause = cause.getCause();
             }
+            throw exception;
         }
-
-        Booking booking = new Booking(nextBookingId, court, date, startTime, endTime);
-        int position = 0;
-        while (position < bookings.size()
-                && (bookings.get(position).getDate().isBefore(date)
-                || (bookings.get(position).getDate().equals(date)
-                && bookings.get(position).getStartTime().isBefore(startTime)))) {
-            position++;
-        }
-        bookings.add(position, booking);
-        nextBookingId++;
-        return booking;
     }
 
-    public synchronized boolean cancelBooking(int bookingId) {
-        if (bookingId <= 0) {
-            throw new IllegalArgumentException("Invalid booking ID.");
-        }
-        for (int index = 0; index < bookings.size(); index++) {
-            if (bookings.get(index).getId() == bookingId) {
-                bookings.remove(index);
-                return true;
-            }
-        }
-        return false;
+    @Transactional
+    public boolean cancelBooking(int bookingId) {
+        validateBookingId(bookingId);
+        return bookingRepository.findById(bookingId).map(booking -> {
+            bookingRepository.delete(booking);
+            return true;
+        }).orElse(false);
     }
 
-    public synchronized Booking getBookingForTime(int courtId, LocalDate date, LocalTime time) {
+    public Booking getBookingForTime(int courtId, LocalDate date, LocalTime time) {
         getCourtById(courtId);
-        if (date == null) {
-            throw new IllegalArgumentException("Date is required.");
-        }
+        requireDate(date);
         validateTime(time);
         if (!time.isBefore(CLOSING_TIME)) {
             throw new IllegalArgumentException("Slot must start before closing time.");
         }
-        for (Booking booking : bookings) {
-            if (booking.getCourt().getId() == courtId
-                    && booking.getDate().equals(date)
-                    && !time.isBefore(booking.getStartTime()) && time.isBefore(booking.getEndTime())) {
-                return booking;
-            }
-        }
-        return null;
+        List<Booking> bookings = bookingRepository.findForTime(courtId, date, time);
+        return bookings.isEmpty() ? null : bookings.get(0);
     }
 
-    public synchronized Booking getBookingById(int id) {
+    public Booking getBookingById(int id) {
+        validateBookingId(id);
+        return bookingRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Booking not found."));
+    }
+
+    public ArrayList<Booking> getBookings() {
+        return new ArrayList<>(bookingRepository.findAllByOrderByDateAscStartTimeAscIdAsc());
+    }
+
+    private void validateBookingId(int id) {
         if (id <= 0) {
             throw new IllegalArgumentException("Invalid booking ID.");
         }
-        for (Booking booking : bookings) {
-            if (booking.getId() == id) {
-                return booking;
-            }
-        }
-        throw new ResourceNotFoundException("Booking not found.");
     }
 
-    public synchronized ArrayList<Booking> getBookings() {
-        return new ArrayList<>(bookings);
+    private void requireDate(LocalDate date) {
+        if (date == null) {
+            throw new IllegalArgumentException("Date is required.");
+        }
     }
 
     private void validateTime(LocalTime time) {

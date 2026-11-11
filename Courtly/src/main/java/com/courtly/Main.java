@@ -5,11 +5,16 @@ import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Scanner;
+import org.springframework.boot.WebApplicationType;
+import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.context.ConfigurableApplicationContext;
 
 public class Main {
     public static void main(String[] args) {
         boolean isRunning = true;
-        BookingService bookingService = new BookingService();
+        ConfigurableApplicationContext context = new SpringApplicationBuilder(CourtlyApplication.class)
+                .web(WebApplicationType.NONE).run(args);
+        BookingService bookingService = context.getBean(BookingService.class);
         Scanner scanner = new Scanner(System.in);
         while (isRunning == true) {
             printMenu();
@@ -33,6 +38,7 @@ public class Main {
             }
         }
         System.out.println("Thank you, Goodbye!");
+        context.close();
     }
 
     public static void printMenu() {

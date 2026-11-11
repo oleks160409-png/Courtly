@@ -1,8 +1,17 @@
 package com.courtly;
 
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "courts")
 public class Court {
-    private final int id;
-    private final String name;
+    @Id
+    private int id;
+    @Column(nullable = false)
+    private String name;
+
+    protected Court() {
+    }
 
     public Court(int id, String name) {
         this.id = id;

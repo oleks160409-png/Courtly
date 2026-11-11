@@ -1,6 +1,10 @@
 package com.courtly;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.annotation.Transactional;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
@@ -14,10 +18,19 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
+@SpringBootTest
+@Transactional
 class BookingServiceTest {
+    @Autowired private BookingService service;
+    @Autowired private BookingRepository repository;
+
+    @BeforeEach
+    void clearBookings() {
+        repository.deleteAll();
+        repository.flush();
+    }
     @Test
     void allowsSameTimeOnDifferentCourts() {
-        BookingService service = new BookingService();
         LocalDate date = LocalDate.of(2026, 11, 12);
         Booking first = service.createBooking(1, date, LocalTime.of(10, 0), LocalTime.of(11, 0));
         Booking second = service.createBooking(2, date, LocalTime.of(10, 0), LocalTime.of(11, 0));
@@ -29,7 +42,6 @@ class BookingServiceTest {
 
     @Test
     void allowsSameTimeOnDifferentDates() {
-        BookingService service = new BookingService();
         LocalDate firstDate = LocalDate.of(2026, 11, 12);
         LocalDate secondDate = firstDate.plusDays(1);
         Booking first = service.createBooking(1, firstDate, LocalTime.of(10, 0), LocalTime.of(11, 0));
@@ -42,7 +54,6 @@ class BookingServiceTest {
 
     @Test
     void cancellationFreesEntirePeriodAndPreservesOtherBooking() {
-        BookingService service = new BookingService();
         LocalDate date = LocalDate.of(2026, 11, 12);
         Booking cancelled = service.createBooking(1, date, LocalTime.of(10, 0), LocalTime.of(11, 0));
         Booking retained = service.createBooking(2, date, LocalTime.of(10, 0), LocalTime.of(11, 0));
@@ -61,7 +72,6 @@ class BookingServiceTest {
 
     @Test
     void allowsBookingFromOpeningToClosingTime() {
-        BookingService service = new BookingService();
         LocalDate date = LocalDate.of(2026, 11, 12);
         Booking booking = service.createBooking(1, date, LocalTime.of(8, 0), LocalTime.of(22, 0));
 
@@ -81,7 +91,6 @@ class BookingServiceTest {
             "10:00:01, 11:00"
     })
     void rejectsInvalidTimesWithoutCreatingBooking(String start, String end) {
-        BookingService service = new BookingService();
         LocalDate date = LocalDate.of(2026, 11, 12);
 
         assertThrows(IllegalArgumentException.class, () ->
@@ -89,12 +98,11 @@ class BookingServiceTest {
 
         assertTrue(service.getBookings().isEmpty());
         Booking valid = service.createBooking(1, date, LocalTime.of(10, 0), LocalTime.of(11, 0));
-        assertEquals(1, valid.getId());
+        assertTrue(valid.getId() > 0);
     }
 
     @Test
     void allowsAdjacentBookingsAndAssignsBoundaryToSecondBooking() {
-        BookingService service = new BookingService();
         LocalDate date = LocalDate.of(2026, 11, 12);
 
         Booking first = service.createBooking(1, date, LocalTime.of(10, 0), LocalTime.of(10, 30));
@@ -108,7 +116,6 @@ class BookingServiceTest {
 
     @Test
     void rejectsOverlappingBookingWithoutChangingExistingBookings() {
-        BookingService service = new BookingService();
         LocalDate date = LocalDate.of(2026, 11, 12);
         Booking original = service.createBooking(1, date, LocalTime.of(10, 0), LocalTime.of(11, 0));
 
