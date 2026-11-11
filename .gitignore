@@ -1,0 +1,10 @@
+# Compiled Java files and build output
+*.class
+out/
+
+# IntelliJ IDEA local project configuration
+.idea/
+*.iml
+
+# macOS metadata
+.DS_Store
