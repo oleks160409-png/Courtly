@@ -30,10 +30,10 @@ public class BookingService {
                 return court;
             }
         }
-        throw new IllegalArgumentException("Court not found.");
+        throw new ResourceNotFoundException("Court not found.");
     }
 
-    public Booking createBooking(int courtId, LocalDate date, LocalTime startTime, LocalTime endTime) {
+    public synchronized Booking createBooking(int courtId, LocalDate date, LocalTime startTime, LocalTime endTime) {
         Court court = getCourtById(courtId);
         if (date == null) {
             throw new IllegalArgumentException("Date is required.");
@@ -49,7 +49,7 @@ public class BookingService {
                     && booking.getDate().equals(date)
                     && startTime.isBefore(booking.getEndTime())
                     && endTime.isAfter(booking.getStartTime())) {
-                throw new IllegalArgumentException("Selected period is not available.");
+                throw new BookingConflictException();
             }
         }
 
@@ -66,7 +66,7 @@ public class BookingService {
         return booking;
     }
 
-    public boolean cancelBooking(int bookingId) {
+    public synchronized boolean cancelBooking(int bookingId) {
         if (bookingId <= 0) {
             throw new IllegalArgumentException("Invalid booking ID.");
         }
@@ -79,7 +79,7 @@ public class BookingService {
         return false;
     }
 
-    public Booking getBookingForTime(int courtId, LocalDate date, LocalTime time) {
+    public synchronized Booking getBookingForTime(int courtId, LocalDate date, LocalTime time) {
         getCourtById(courtId);
         if (date == null) {
             throw new IllegalArgumentException("Date is required.");
@@ -98,7 +98,19 @@ public class BookingService {
         return null;
     }
 
-    public ArrayList<Booking> getBookings() {
+    public synchronized Booking getBookingById(int id) {
+        if (id <= 0) {
+            throw new IllegalArgumentException("Invalid booking ID.");
+        }
+        for (Booking booking : bookings) {
+            if (booking.getId() == id) {
+                return booking;
+            }
+        }
+        throw new ResourceNotFoundException("Booking not found.");
+    }
+
+    public synchronized ArrayList<Booking> getBookings() {
         return new ArrayList<>(bookings);
     }
 
