@@ -1,18 +1,19 @@
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 public class Booking {
     private final int id;
     private final Court court;
     private final LocalDate date;
-    private final int startHour;
-    private final int endHour;
+    private final LocalTime startTime;
+    private final LocalTime endTime;
 
-    public Booking(int id, Court court, LocalDate date, int startHour, int endHour) {
+    public Booking(int id, Court court, LocalDate date, LocalTime startTime, LocalTime endTime) {
         this.id = id;
         this.court = court;
         this.date = date;
-        this.startHour = startHour;
-        this.endHour = endHour;
+        this.startTime = startTime;
+        this.endTime = endTime;
     }
 
     public int getId() {
@@ -27,11 +28,11 @@ public class Booking {
         return date;
     }
 
-    public int getStartHour() {
-        return startHour;
+    public LocalTime getStartTime() {
+        return startTime;
     }
 
-    public int getEndHour() {
-        return endHour;
+    public LocalTime getEndTime() {
+        return endTime;
     }
 }

@@ -1,9 +1,11 @@
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 
 public class BookingService {
-    public static final int OPENING_HOUR = 8;
-    public static final int CLOSING_HOUR = 22;
+    public static final LocalTime OPENING_TIME = LocalTime.of(8, 0);
+    public static final LocalTime CLOSING_TIME = LocalTime.of(22, 0);
+    public static final int SLOT_MINUTES = 30;
 
     private final ArrayList<Booking> bookings = new ArrayList<>();
     private final ArrayList<Court> courts = new ArrayList<>();
@@ -27,33 +29,32 @@ public class BookingService {
         throw new IllegalArgumentException("Court not found.");
     }
 
-    public Booking createBooking(int courtId, LocalDate date, int startHour, int endHour) {
+    public Booking createBooking(int courtId, LocalDate date, LocalTime startTime, LocalTime endTime) {
         Court court = getCourtById(courtId);
         if (date == null) {
             throw new IllegalArgumentException("Date is required.");
         }
-        if (startHour < OPENING_HOUR || startHour >= CLOSING_HOUR
-                || endHour <= OPENING_HOUR || endHour > CLOSING_HOUR) {
-            throw new IllegalArgumentException("Invalid time");
-        }
-        if (startHour >= endHour) {
-            throw new IllegalArgumentException("Start hour must be before end hour.");
+        validateTime(startTime);
+        validateTime(endTime);
+        if (!startTime.isBefore(endTime)) {
+            throw new IllegalArgumentException("Start time must be before end time.");
         }
 
         for (Booking booking : bookings) {
             if (booking.getCourt().getId() == courtId
                     && booking.getDate().equals(date)
-                    && startHour < booking.getEndHour() && endHour > booking.getStartHour()) {
+                    && startTime.isBefore(booking.getEndTime())
+                    && endTime.isAfter(booking.getStartTime())) {
                 throw new IllegalArgumentException("Selected period is not available.");
             }
         }
 
-        Booking booking = new Booking(nextBookingId, court, date, startHour, endHour);
+        Booking booking = new Booking(nextBookingId, court, date, startTime, endTime);
         int position = 0;
         while (position < bookings.size()
                 && (bookings.get(position).getDate().isBefore(date)
                 || (bookings.get(position).getDate().equals(date)
-                && bookings.get(position).getStartHour() < startHour))) {
+                && bookings.get(position).getStartTime().isBefore(startTime)))) {
             position++;
         }
         bookings.add(position, booking);
@@ -74,18 +75,19 @@ public class BookingService {
         return false;
     }
 
-    public Booking getBookingForHour(int courtId, LocalDate date, int hour) {
+    public Booking getBookingForTime(int courtId, LocalDate date, LocalTime time) {
         getCourtById(courtId);
         if (date == null) {
             throw new IllegalArgumentException("Date is required.");
         }
-        if (hour < OPENING_HOUR || hour >= CLOSING_HOUR) {
-            throw new IllegalArgumentException("Invalid time");
+        validateTime(time);
+        if (!time.isBefore(CLOSING_TIME)) {
+            throw new IllegalArgumentException("Slot must start before closing time.");
         }
         for (Booking booking : bookings) {
             if (booking.getCourt().getId() == courtId
                     && booking.getDate().equals(date)
-                    && hour >= booking.getStartHour() && hour < booking.getEndHour()) {
+                    && !time.isBefore(booking.getStartTime()) && time.isBefore(booking.getEndTime())) {
                 return booking;
             }
         }
@@ -94,5 +96,17 @@ public class BookingService {
 
     public ArrayList<Booking> getBookings() {
         return new ArrayList<>(bookings);
+    }
+
+    private void validateTime(LocalTime time) {
+        if (time == null) {
+            throw new IllegalArgumentException("Time is required.");
+        }
+        if (time.isBefore(OPENING_TIME) || time.isAfter(CLOSING_TIME)) {
+            throw new IllegalArgumentException("Time must be between 08:00 and 22:00.");
+        }
+        if (time.getMinute() % SLOT_MINUTES != 0 || time.getSecond() != 0 || time.getNano() != 0) {
+            throw new IllegalArgumentException("Time must use 30-minute steps.");
+        }
     }
 }

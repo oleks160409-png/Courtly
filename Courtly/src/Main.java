@@ -1,4 +1,5 @@
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Scanner;
@@ -14,8 +15,8 @@ public class Main {
             if (scanner.hasNextInt()) {
                 int choice = scanner.nextInt();
                 switch (choice) {
-                    case 1 -> System.out.printf("Opening hours: %02d:00–%02d:00%n",
-                            BookingService.OPENING_HOUR, BookingService.CLOSING_HOUR);
+                    case 1 -> System.out.printf("Opening hours: %s–%s%n",
+                            BookingService.OPENING_TIME, BookingService.CLOSING_TIME);
                     case 2 -> printCourtAvailability(bookingService, scanner);
                     case 3 -> createBooking(bookingService, scanner);
                     case 4 -> cancelBooking(bookingService, scanner);
@@ -77,12 +78,14 @@ public class Main {
             return;
         }
         System.out.println("Availability: " + court.getName() + ", " + date);
-        for (int hour = BookingService.OPENING_HOUR; hour < BookingService.CLOSING_HOUR; hour++) {
-            Booking booking = bookingService.getBookingForHour(court.getId(), date, hour);
+        for (LocalTime time = BookingService.OPENING_TIME; time.isBefore(BookingService.CLOSING_TIME);
+                time = time.plusMinutes(BookingService.SLOT_MINUTES)) {
+            Booking booking = bookingService.getBookingForTime(court.getId(), date, time);
+            LocalTime slotEnd = time.plusMinutes(BookingService.SLOT_MINUTES);
             if (booking == null) {
-                System.out.printf("%02d:00 - available%n", hour);
+                System.out.printf("%s–%s - available%n", time, slotEnd);
             } else {
-                System.out.printf("%02d:00 - booked (#%d)%n", hour, booking.getId());
+                System.out.printf("%s–%s - booked (#%d)%n", time, slotEnd, booking.getId());
             }
         }
     }
@@ -96,22 +99,20 @@ public class Main {
         if (date == null) {
             return;
         }
-        int startHour = readTime(scanner, "Enter start hour: ",
-                BookingService.OPENING_HOUR, BookingService.CLOSING_HOUR - 1);
-        if (startHour == -1) {
+        LocalTime startTime = readTime(scanner, "Enter start time (HH:mm): ");
+        if (startTime == null) {
             return;
         }
 
-        int endHour = readTime(scanner, "Enter end hour: ",
-                BookingService.OPENING_HOUR + 1, BookingService.CLOSING_HOUR);
-        if (endHour == -1) {
+        LocalTime endTime = readTime(scanner, "Enter end time (HH:mm): ");
+        if (endTime == null) {
             return;
         }
         try {
-            Booking booking = bookingService.createBooking(court.getId(), date, startHour, endHour);
-            System.out.printf("Booking #%d created: %s, %s, %02d:00–%02d:00%n",
+            Booking booking = bookingService.createBooking(court.getId(), date, startTime, endTime);
+            System.out.printf("Booking #%d created: %s, %s, %s–%s%n",
                     booking.getId(), booking.getCourt().getName(), booking.getDate(),
-                    booking.getStartHour(), booking.getEndHour());
+                    booking.getStartTime(), booking.getEndTime());
         } catch (IllegalArgumentException exception) {
             System.out.println(exception.getMessage());
         }
@@ -147,29 +148,27 @@ public class Main {
             System.out.println(exception.getMessage());
         }
     }
-    public static int readTime(Scanner scanner, String prompt, int minHour, int maxHour) {
+    public static LocalTime readTime(Scanner scanner, String prompt) {
         System.out.println(prompt);
-        if (!scanner.hasNextInt()) {
-            System.out.println("Please enter a number.");
-            scanner.next();
-            return -1;
+        String input = scanner.next();
+        if (!input.matches("[0-9]{2}:[0-9]{2}")) {
+            System.out.println("Invalid time. Use HH:mm.");
+            return null;
         }
-
-        int timeChoice = scanner.nextInt();
-        if (timeChoice < minHour || timeChoice > maxHour) {
-            System.out.println("Invalid time");
-            return -1;
+        try {
+            return LocalTime.parse(input);
+        } catch (DateTimeParseException exception) {
+            System.out.println("Invalid time. Use HH:mm.");
+            return null;
         }
-
-        return timeChoice;
     }
 
     public static void showMyBookings(BookingService bookingService) {
         ArrayList<Booking> bookings = bookingService.getBookings();
         for (Booking booking : bookings) {
-            System.out.printf("#%d %s, %s, %02d:00–%02d:00%n",
+            System.out.printf("#%d %s, %s, %s–%s%n",
                     booking.getId(), booking.getCourt().getName(), booking.getDate(),
-                    booking.getStartHour(), booking.getEndHour());
+                    booking.getStartTime(), booking.getEndTime());
         }
         int bookingCount = bookings.size();
         if (bookingCount == 0) {
